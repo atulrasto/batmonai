@@ -52,8 +52,8 @@ sudo firewall-cmd --reload
 
 ```bash
 # Clone the repo
-git clone https://github.com/atulrasto/batmonai.git /opt/batmonai
-cd /opt/batmonai
+git clone https://github.com/atulrasto/batmonai.git /home/harshit/batmonai
+cd /home/harshit/batmonai
 
 # Copy and edit the environment file
 cp .env.example .env
