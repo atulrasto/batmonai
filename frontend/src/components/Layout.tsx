@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
 export default function Layout() {
@@ -34,7 +34,7 @@ export default function Layout() {
       />
 
       <nav className={`sidebar${sidebarOpen ? ' open' : ''}`}>
-        <div className="sidebar-logo">⚡ batmonai</div>
+        <Link to="/" className="sidebar-logo">⚡ batmonai</Link>
         <div className="sidebar-links">
           <NavLink to="/dashboard" end className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'} onClick={closeMenu}>
             Dashboard
@@ -66,6 +66,7 @@ export default function Layout() {
               {isSuperuser ? 'admin' : 'client'}
             </span>
           </div>
+          <Link to="/" className="home-link">← Public site</Link>
           <button className="btn-ghost logout-btn" onClick={handleLogout}>Sign out</button>
         </div>
       </nav>

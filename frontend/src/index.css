@@ -56,7 +56,17 @@ body {
 .sidebar-logo {
   padding: 1.25rem 1rem 1rem; font-size: 1.1rem; font-weight: 700;
   border-bottom: 1px solid var(--border);
+  text-decoration: none; color: var(--text);
+  display: block; transition: color 0.15s;
 }
+.sidebar-logo:hover { color: var(--blue); }
+
+.home-link {
+  display: block; font-size: 11px; color: var(--muted);
+  text-decoration: none; margin-bottom: 0.4rem;
+  transition: color 0.15s;
+}
+.home-link:hover { color: var(--text); }
 .sidebar-links { flex: 1; padding: 0.75rem 0.5rem; display: flex; flex-direction: column; gap: 2px; }
 .nav-link {
   display: block; padding: 0.45rem 0.75rem; border-radius: var(--radius);
