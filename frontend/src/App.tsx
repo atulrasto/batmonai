@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import Layout from './components/Layout'
+import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
 import ChangePasswordPage from './pages/ChangePasswordPage'
 import DashboardPage from './pages/DashboardPage'
@@ -16,11 +17,15 @@ export default function App() {
   return (
     <AuthProvider>
       <Routes>
+        {/* Public */}
+        <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/change-password" element={<ChangePasswordPage />} />
+
+        {/* Protected app */}
         <Route element={<ProtectedRoute />}>
           <Route element={<Layout />}>
-            <Route path="/" element={<DashboardPage />} />
+            <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/admin/clients" element={<ClientsPage />} />
             <Route path="/admin/flash-device" element={<FlashDevicePage />} />
             <Route path="/sites" element={<SitesPage />} />
@@ -29,6 +34,7 @@ export default function App() {
             <Route path="/reports" element={<ReportsPage />} />
           </Route>
         </Route>
+
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AuthProvider>

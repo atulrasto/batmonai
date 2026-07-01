@@ -13,7 +13,7 @@ export default function LoginPage() {
 
   // Already authenticated — go straight to the app
   useEffect(() => {
-    if (!loading && user && !user.must_change_password) nav('/', { replace: true })
+    if (!loading && user && !user.must_change_password) nav('/dashboard', { replace: true })
     if (!loading && user?.must_change_password) nav('/change-password', { replace: true })
   }, [user, loading, nav])
 
@@ -27,7 +27,7 @@ export default function LoginPage() {
       if (resp.must_change_password) {
         nav('/change-password', { replace: true })
       } else {
-        nav('/', { replace: true })
+        nav('/dashboard', { replace: true })
       }
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { detail?: string } } })

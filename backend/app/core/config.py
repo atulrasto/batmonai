@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     smtp_from: str = ""
     smtp_tls: bool = True
 
+    # Contact form destination
+    contact_email: str = ""
+
     # Ingestion
     publish_interval_seconds: int = 10
     offline_multiplier: int = 3

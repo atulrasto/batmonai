@@ -36,7 +36,7 @@ export default function Layout() {
       <nav className={`sidebar${sidebarOpen ? ' open' : ''}`}>
         <div className="sidebar-logo">⚡ batmonai</div>
         <div className="sidebar-links">
-          <NavLink to="/" end className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'} onClick={closeMenu}>
+          <NavLink to="/dashboard" end className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'} onClick={closeMenu}>
             Dashboard
           </NavLink>
           <NavLink to="/sites" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'} onClick={closeMenu}>
