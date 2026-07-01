@@ -23,7 +23,7 @@ VM4 (Rocky Linux)  ← this guide covers VM4
             └── backup       (pg_dump cron, 02:30 daily)
 ```
 
-**MQTT 8883** is raw TCP (not HTTP). The front Caddy on `192.168.0.204` cannot proxy raw TCP by default. See [§5 MQTT forward](#5-l4-forward-for-mqtt-8883) for options.
+**MQTT 8883** is raw TCP (not HTTP). The front Caddy on `192.168.0.204` cannot proxy raw TCP by default. See [§6 MQTT forward](#6-l4-forward-for-mqtt-8883) for options.
 
 ---
 
@@ -128,31 +128,68 @@ Clients (firmware / `sim_publisher.py`) must trust `mosquitto/certs/ca.crt`.
 
 ---
 
-## 3. Front Caddy Configuration (192.168.0.204)
+## 3. VM4 Caddy — `caddy/Caddyfile.prod` (already in the repo)
 
-The gateway Caddy on `192.168.0.204` proxies HTTPS to VM4's Caddy. Add a site block to its `Caddyfile`:
+VM4's Caddy container routes HTTP traffic internally — it does **not** handle TLS or ACME. TLS is terminated by the front Caddy on `192.168.0.204` (see §4).
+
+**No manual setup needed.** The file already exists in the repo at `caddy/Caddyfile.prod` and `docker-compose.prod.yml` mounts it automatically:
+
+```yaml
+# inside docker-compose.prod.yml (already configured)
+caddy:
+  volumes:
+    - ./caddy/Caddyfile.prod:/etc/caddy/Caddyfile:ro
+```
+
+Content of `caddy/Caddyfile.prod` for reference:
 
 ```
-# /etc/caddy/Caddyfile on 192.168.0.204
-batmon.energymonai.com {
-    reverse_proxy VM4_IP:443 {
-        transport http {
-            tls_insecure_skip_verify  # if VM4 Caddy uses its own Let's Encrypt cert, remove this
-        }
+{
+    auto_https off
+}
+
+:80 {
+    handle /api/* {
+        uri strip_prefix /api
+        reverse_proxy api:8000
+    }
+    handle {
+        reverse_proxy frontend:80
+    }
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        ...
     }
 }
 ```
 
-Replace `VM4_IP` with VM4's LAN IP address.
-
-If VM4's Caddy gets a real Let's Encrypt cert (it can if 443 reaches it directly), remove `tls_insecure_skip_verify`.
+VM4's Caddy listens on port 80 only. The front Caddy on `192.168.0.204` is the only public HTTPS endpoint.
 
 ---
 
-## 4. Deploy
+## 4. Front Caddy Configuration (192.168.0.204) — TLS termination
+
+The **gateway** Caddy on `192.168.0.204` terminates TLS for `batmon.energymonai.com`, obtains the Let's Encrypt cert, and proxies plain HTTP to VM4. Add this site block to its `/etc/caddy/Caddyfile`:
+
+```
+# /etc/caddy/Caddyfile on 192.168.0.204
+batmon.energymonai.com {
+    reverse_proxy VM4_IP:80
+}
+```
+
+Replace `VM4_IP` with VM4's LAN IP address. Caddy on `192.168.0.204` will automatically obtain a Let's Encrypt cert — port 80 and 443 must be reachable from the internet on that machine. After adding the block, reload:
 
 ```bash
-cd /opt/batmonai
+sudo systemctl reload caddy   # or: caddy reload --config /etc/caddy/Caddyfile
+```
+
+---
+
+## 5. Deploy
+
+```bash
+cd /home/harshit/batmonai
 
 # Pull latest code
 git pull
@@ -167,7 +204,7 @@ make prod-seed
 **Deploy sequence on every update:**
 
 ```bash
-cd /opt/batmonai
+cd /home/harshit/batmonai
 git pull
 make prod-up   # docker compose pull + build + up -d
 ```
@@ -176,7 +213,7 @@ Migrations run automatically via the `migrate` service which must complete succe
 
 ---
 
-## 5. L4 Forward for MQTT (:8883)
+## 6. L4 Forward for MQTT (:8883)
 
 MQTT uses raw TCP on port 8883. The front Caddy (`192.168.0.204`) cannot proxy raw TCP without the `caddy-l4` experimental plugin. Choose one option:
 
@@ -217,7 +254,7 @@ If the public IP maps directly to VM4 (or if the router allows port forwarding),
 
 ---
 
-## 6. Verify the Deployment
+## 7. Verify the Deployment
 
 ```bash
 # Check all containers are healthy
@@ -239,7 +276,7 @@ mosquitto_pub -h batmon.energymonai.com -p 8883 \
 
 ---
 
-## 7. Backups
+## 8. Backups
 
 The `backup` service runs `pg_dump` daily at 02:30 (configurable via `BACKUP_CRON` in `.env`). Dumps are written to `./backups/` on the host and the last 14 are retained.
 
@@ -258,12 +295,12 @@ Optionally rsync `backups/` to off-site storage:
 
 ```bash
 # Add to host crontab (runs after the 02:30 backup):
-# 03:00 * * * rsync -az /opt/batmonai/backups/ user@backup-server:/backups/batmonai/
+# 03:00 * * * rsync -az /home/harshit/batmonai/backups/ user@backup-server:/backups/batmonai/
 ```
 
 ---
 
-## 8. Routine Operations
+## 9. Routine Operations
 
 | Task | Command |
 |------|---------|
@@ -276,7 +313,7 @@ Optionally rsync `backups/` to off-site storage:
 
 ---
 
-## 9. Troubleshooting
+## 10. Troubleshooting
 
 **Container won't start — dependency not healthy**
 

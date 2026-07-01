@@ -1,27 +1,27 @@
-# batmonai Caddyfile — production
-# Applied via docker-compose.prod.yml override.
-# Requires ACME / Let's Encrypt reachability from VM4.
+# batmonai Caddyfile — production (HTTP only)
+# TLS is terminated by the front Caddy on 192.168.0.204, which proxies plain
+# HTTP to VM4:80.  This Caddy just routes internally — no ACME needed here.
 
 {
-    email atulrasto@gmail.com
+    auto_https off
     log {
         level WARN
     }
 }
 
-batmon.energymonai.com {
-    # Frontend
-    handle /* {
-        reverse_proxy frontend:80
-    }
-
+:80 {
     # API
     handle /api/* {
         uri strip_prefix /api
         reverse_proxy api:8000
     }
 
-    # Security headers
+    # Frontend (catch-all)
+    handle {
+        reverse_proxy frontend:80
+    }
+
+    # Security headers (HSTS still makes sense — browser enforces after first visit)
     header {
         Strict-Transport-Security "max-age=31536000; includeSubDomains"
         X-Content-Type-Options nosniff
