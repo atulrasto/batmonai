@@ -1,0 +1,18 @@
+# MQTT
+aiomqtt==2.3.0
+
+# Database (direct asyncpg — no SQLAlchemy ORM in ingestion)
+asyncpg==0.29.0
+
+# Validation / settings
+pydantic==2.8.2
+pydantic-settings==2.3.4
+
+# Email notifications
+aiosmtplib>=3.0.0
+
+# HTTP (webhooks)
+httpx>=0.27.0
+
+# Utilities
+python-dotenv==1.0.1

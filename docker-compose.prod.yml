@@ -1,0 +1,136 @@
+# Production override — apply with:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# What this file changes vs. the dev base:
+#   • Caddy uses Caddyfile.prod (real ACME cert for batmon.energymonai.com)
+#   • Mosquitto exposes 8883 only (plain 1883 removed)
+#   • api / frontend / postgres / pgbouncer ports removed (Caddy is the only ingress)
+#   • Resource limits added to every service
+#   • SMTP env vars forwarded to the ingestion service
+#   • backup service: runs pg_dump on a schedule (configurable via BACKUP_CRON)
+
+services:
+
+  postgres:
+    ports: []   # not exposed in prod — internal only
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+
+  pgbouncer:
+    ports: []
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+  mosquitto:
+    ports:
+      - "8883:8883"   # raw-TCP TLS for MQTT; plain 1883 NOT exposed
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+
+  migrate:
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+  api:
+    ports: []   # Caddy reverse-proxies; direct port not exposed
+    environment:
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_FROM: ${SMTP_FROM}
+      SMTP_TLS: ${SMTP_TLS:-true}
+      API_WORKERS: ${API_WORKERS:-2}
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+  ingestion:
+    environment:
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_FROM: ${SMTP_FROM}
+      SMTP_TLS: ${SMTP_TLS:-true}
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+  frontend:
+    ports: []   # Caddy serves the frontend; direct port not exposed
+    # VITE_API_URL is NOT set here — the build inside Docker has no VITE_API_URL,
+    # so client.ts defaults to '/api', and nginx.conf proxies /api/ → api:8000.
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+
+  caddy:
+    volumes:
+      - ./caddy/Caddyfile.prod:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    ports:
+      - "80:80"
+      - "443:443"
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+
+  # ── Backup service ────────────────────────────────────────────────────────────
+  # Runs pg_dump on BACKUP_CRON schedule (default: 02:30 daily).
+  # Dumps land in /backups inside the container, which mounts to ./backups on the host.
+  # Retention: last 14 files kept (older deleted by the script).
+  backup:
+    image: timescale/timescaledb:latest-pg16
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      PGHOST: postgres
+      PGPORT: "5432"
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB}
+      BACKUP_CRON: ${BACKUP_CRON:-30 2 * * *}
+      BACKUP_RETAIN: ${BACKUP_RETAIN:-14}
+    volumes:
+      - ./backups:/backups
+      - ./scripts/backup.sh:/backup.sh:ro
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        apk add --no-cache dcron 2>/dev/null || true
+        echo "$$BACKUP_CRON sh /backup.sh" | crontab -
+        crond -f -d 8
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep crond || exit 1"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+volumes:
+  pg_data:
+  mosquitto_data:
+  mosquitto_log:
+  caddy_data:
+  caddy_config:

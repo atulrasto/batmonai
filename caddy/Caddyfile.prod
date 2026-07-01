@@ -1,0 +1,31 @@
+# batmonai Caddyfile — production
+# Applied via docker-compose.prod.yml override.
+# Requires ACME / Let's Encrypt reachability from VM4.
+
+{
+    email atulrasto@gmail.com
+    log {
+        level WARN
+    }
+}
+
+batmon.energymonai.com {
+    # Frontend
+    handle /* {
+        reverse_proxy frontend:80
+    }
+
+    # API
+    handle /api/* {
+        uri strip_prefix /api
+        reverse_proxy api:8000
+    }
+
+    # Security headers
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        Referrer-Policy strict-origin-when-cross-origin
+    }
+}

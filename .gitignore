@@ -1,0 +1,84 @@
+# Environment & secrets
+.env
+.env.local
+.env.*.local
+
+# TLS certificates & keys
+*.pem
+*.crt
+*.key
+*.p12
+*.pfx
+mosquitto/certs/
+caddy/certs/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+.venv/
+venv/
+env/
+pip-wheel-metadata/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
+*.cover
+
+# Node / frontend
+node_modules/
+frontend/dist/
+frontend/.vite/
+.npm/
+
+# PlatformIO / firmware
+firmware/.pio/
+firmware/.pioenvs/
+firmware/lib/
+
+# Firmware profiles — track manifests, not large binaries
+firmware_profiles/**/*.bin
+
+# Docker
+*.log
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# IDE / editors
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*~
+
+# Alembic runtime (generated, not source)
+# Keep alembic/versions/ tracked in git
+
+# Mosquitto runtime files
+mosquitto/passwd
+mosquitto/data/
+
+# Backups (large binary files)
+backups/
+
+# Claude Code project memory (local only)
+.claude/

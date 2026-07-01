@@ -1,0 +1,3 @@
+# Requirements for tools/sim_publisher.py (dev machine, not in Docker)
+paho-mqtt>=2.1.0
+

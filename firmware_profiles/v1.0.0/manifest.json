@@ -1,0 +1,12 @@
+{
+  "version": "1.0.0",
+  "description": "Default profile: 1x PZEM-004T inverter + 2x PZEM-017 batteries + XY-MD02 temp/humidity + H2 gas sensor",
+  "chip": "esp32",
+  "files": [
+    { "path": "bootloader.bin",  "address": "0x1000"  },
+    { "path": "partitions.bin",  "address": "0x8000"  },
+    { "path": "firmware.bin",    "address": "0x10000" }
+  ],
+  "built_at": "2026-07-01T00:00:00Z",
+  "notes": "Build with: cd firmware && pio run  then  make firmware-release VER=1.0.0"
+}

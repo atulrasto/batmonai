@@ -1,0 +1,217 @@
+services:
+
+  postgres:
+    image: timescale/timescaledb:latest-pg16
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_HOST_PORT:-5450}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_USER: ${APP_DB_USER:-batmonai_app}
+      DB_PASSWORD: ${APP_DB_PASSWORD}
+      DB_NAME: ${POSTGRES_DB}
+      POOL_MODE: ${PGBOUNCER_POOL_MODE:-transaction}
+      MAX_CLIENT_CONN: ${PGBOUNCER_MAX_CLIENT_CONN:-100}
+      DEFAULT_POOL_SIZE: ${PGBOUNCER_DEFAULT_POOL_SIZE:-20}
+      # SCRAM-SHA-256 passthrough: pgbouncer fetches the verifier from postgres
+      # so asyncpg's SCRAM auth round-trips correctly through the bouncer.
+      AUTH_TYPE: scram-sha-256
+      AUTH_USER: ${POSTGRES_USER}
+      AUTH_QUERY: "SELECT usename, passwd FROM pg_shadow WHERE usename=$1"
+    ports:
+      - "${PGBOUNCER_HOST_PORT:-6450}:5432"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 5432 -U ${APP_DB_USER:-batmonai_app}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  mosquitto:
+    image: eclipse-mosquitto:2
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Entrypoint uses these to build /mosquitto/config/passwd on each start
+      MQTT_INGESTION_PASSWORD: ${MQTT_INGESTION_PASSWORD}
+      MQTT_TEST_DEVICE_UID: ${MQTT_TEST_DEVICE_UID:-}
+      MQTT_TEST_DEVICE_PASSWORD: ${MQTT_TEST_DEVICE_PASSWORD:-}
+    entrypoint: ["sh", "/docker-entrypoint.sh"]
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./mosquitto/acl:/mosquitto/config/acl:ro
+      - ./mosquitto/docker-entrypoint.sh:/docker-entrypoint.sh:ro
+      - ./mosquitto/certs:/mosquitto/certs:ro
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_log:/mosquitto/log
+    ports:
+      - "${MQTT_HOST_PORT_TLS:-8883}:8883"
+      - "${MQTT_HOST_PORT_PLAIN:-1884}:1883"
+    healthcheck:
+      # Plain listener allows anonymous — no credentials needed for healthcheck
+      test: ["CMD-SHELL", "mosquitto_sub -h 127.0.0.1 -p 1883 -t '$$SYS/#' -C 1 -i healthcheck -W 3 2>/dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  migrate:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    env_file: .env
+    environment:
+      # Connects DIRECTLY to postgres (bypasses pgbouncer) as superuser
+      # so that CREATE EXTENSION, create_hypertable(), and GRANT work correctly.
+      DATABASE_URL_SYNC: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      # Also needed by cli.py seed-superuser (runs async through pgbouncer as app user
+      # after migrate completes, so superuser can bypass RLS)
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      POSTGRES_DB: ${POSTGRES_DB}
+      APP_DB_USER: ${APP_DB_USER:-batmonai_app}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD}
+    command: ["alembic", "upgrade", "head"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # API connects as non-superuser app role via pgbouncer — RLS enforced
+      DATABASE_URL: postgresql+asyncpg://${APP_DB_USER:-batmonai_app}:${APP_DB_PASSWORD}@pgbouncer:5432/${POSTGRES_DB}
+      DATABASE_URL_SYNC: postgresql://${APP_DB_USER:-batmonai_app}:${APP_DB_PASSWORD}@pgbouncer:5432/${POSTGRES_DB}
+      FIRMWARE_RELEASES_DIR: /firmware_profiles
+    volumes:
+      - ./firmware_profiles:/firmware_profiles:ro
+    ports:
+      - "${API_HOST_PORT:-8010}:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      pgbouncer:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    develop:
+      watch:
+        - action: sync+restart
+          path: ./backend
+          target: /app
+
+  ingestion:
+    build:
+      context: ./ingestion
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Ingestion connects directly to postgres as superuser — bypasses RLS
+      # (safe: ingestion is an internal service, not user-facing)
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      MQTT_HOST: mosquitto
+      MQTT_PORT_TLS: "8883"
+      MQTT_USERNAME: ingestion
+      MQTT_PASSWORD: ${MQTT_INGESTION_PASSWORD}
+      MQTT_CA_CERT: /mosquitto/certs/ca.crt
+      MQTT_TLS_INSECURE: ${MQTT_TLS_INSECURE:-false}
+      PUBLISH_INTERVAL_SECONDS: ${PUBLISH_INTERVAL_SECONDS:-10}
+      OFFLINE_MULTIPLIER: ${OFFLINE_MULTIPLIER:-3}
+    volumes:
+      - ./mosquitto/certs:/mosquitto/certs:ro
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      mosquitto:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import sys; sys.exit(0)\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      VITE_API_URL: http://localhost:${API_HOST_PORT:-8010}
+    ports:
+      - "${FRONTEND_HOST_PORT:-5180}:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:80/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    ports:
+      - "${CADDY_HTTP_PORT:-8080}:80"
+      - "${CADDY_HTTPS_PORT:-8443}:443"
+    depends_on:
+      api:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "caddy validate --config /etc/caddy/Caddyfile 2>/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  pg_data:
+  mosquitto_data:
+  mosquitto_log:
+  caddy_data:
+  caddy_config:
