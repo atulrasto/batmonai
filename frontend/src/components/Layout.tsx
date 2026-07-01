@@ -20,60 +20,67 @@ export default function Layout() {
 
   return (
     <div className="app-shell">
-      <button
-        className="hamburger"
-        onClick={() => setSidebarOpen(o => !o)}
-        aria-label="Toggle menu"
-      >
-        {sidebarOpen ? '✕' : '☰'}
-      </button>
 
-      <div
-        className={`sidebar-overlay${sidebarOpen ? ' open' : ''}`}
-        onClick={closeMenu}
-      />
-
-      <nav className={`sidebar${sidebarOpen ? ' open' : ''}`}>
-        <Link to="/" className="sidebar-logo">⚡ batmonai</Link>
-        <div className="sidebar-links">
-          <NavLink to="/dashboard" end className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'} onClick={closeMenu}>
-            Dashboard
-          </NavLink>
-          <NavLink to="/sites" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'} onClick={closeMenu}>
-            Sites
-          </NavLink>
-          {isSuperuser && (
-            <>
-              <NavLink to="/admin/clients" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'} onClick={closeMenu}>
-                Clients
-              </NavLink>
-              <NavLink to="/admin/flash-device" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'} onClick={closeMenu}>
-                Flash Device
-              </NavLink>
-            </>
-          )}
-          <NavLink to="/reports" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'} onClick={closeMenu}>
-            Reports
-          </NavLink>
-          <NavLink to="/provision-device" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'} onClick={closeMenu}>
-            Provision Device
-          </NavLink>
+      {/* ── Fixed top bar — always visible ── */}
+      <header className="topbar">
+        <div className="topbar-left">
+          <button
+            className="hamburger-topbar"
+            onClick={() => setSidebarOpen(o => !o)}
+            aria-label="Toggle menu"
+          >
+            {sidebarOpen ? '✕' : '☰'}
+          </button>
+          <Link to="/" className="topbar-logo">⚡ batmonai</Link>
         </div>
-        <div className="sidebar-footer">
-          <div className="sidebar-user">
-            <span className="user-email">{user?.email}</span>
-            <span className={`role-badge ${isSuperuser ? 'role-su' : 'role-client'}`}>
-              {isSuperuser ? 'admin' : 'client'}
-            </span>
+        <div className="topbar-right">
+          <span className="topbar-email">{user?.email}</span>
+          <span className={`role-badge ${isSuperuser ? 'role-su' : 'role-client'}`}>
+            {isSuperuser ? 'admin' : 'client'}
+          </span>
+          <Link to="/" className="topbar-home-link">← Public site</Link>
+          <button className="btn-ghost btn-sm" onClick={handleLogout}>Sign out</button>
+        </div>
+      </header>
+
+      {/* ── Below topbar: sidebar + content ── */}
+      <div className="app-body">
+        <div
+          className={`sidebar-overlay${sidebarOpen ? ' open' : ''}`}
+          onClick={closeMenu}
+        />
+
+        <nav className={`sidebar${sidebarOpen ? ' open' : ''}`}>
+          <div className="sidebar-links">
+            <NavLink to="/dashboard" end className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'} onClick={closeMenu}>
+              Dashboard
+            </NavLink>
+            <NavLink to="/sites" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'} onClick={closeMenu}>
+              Sites
+            </NavLink>
+            {isSuperuser && (
+              <>
+                <NavLink to="/admin/clients" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'} onClick={closeMenu}>
+                  Clients
+                </NavLink>
+                <NavLink to="/admin/flash-device" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'} onClick={closeMenu}>
+                  Flash Device
+                </NavLink>
+              </>
+            )}
+            <NavLink to="/reports" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'} onClick={closeMenu}>
+              Reports
+            </NavLink>
+            <NavLink to="/provision-device" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'} onClick={closeMenu}>
+              Provision Device
+            </NavLink>
           </div>
-          <Link to="/" className="home-link">← Public site</Link>
-          <button className="btn-ghost logout-btn" onClick={handleLogout}>Sign out</button>
-        </div>
-      </nav>
+        </nav>
 
-      <main className="main-content">
-        <Outlet />
-      </main>
+        <main className="main-content">
+          <Outlet />
+        </main>
+      </div>
     </div>
   )
 }
