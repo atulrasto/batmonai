@@ -76,6 +76,7 @@ const INDUSTRIES = [
   { icon: '🌞', name: 'Solar + Storage', desc: 'Battery health drives ROI' },
   { icon: '🚨', name: 'Emergency Services', desc: 'Mission-critical always-on power' },
   { icon: '🏗️', name: 'Construction Sites', desc: 'Remote power with no grid fallback' },
+  { icon: '🛡️', name: 'Defence & Military', desc: 'Mission-critical power in field & base operations' },
 ]
 
 export default function LandingPage() {
