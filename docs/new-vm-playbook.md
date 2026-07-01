@@ -126,7 +126,44 @@ Caddy will automatically obtain a Let's Encrypt cert for the new domain. The sit
 
 ---
 
-## 8. Every future deploy
+## 8. MQTT TCP forwarding (if project uses Mosquitto on 8883)
+
+MQTT is raw TCP — the HTTP reverse proxy cannot handle it. You need a separate L4 forward from the public-facing machine to the new VM.
+
+**Check first:** is port 8883 already in use on `192.168.0.204`?
+```bash
+ss -tlnp | grep 8883   # on 192.168.0.204
+```
+
+### If 8883 is free on 192.168.0.204 — DNAT to new VM
+```bash
+# On 192.168.0.204:
+sudo firewall-cmd --permanent --add-masquerade
+sudo firewall-cmd --permanent \
+  --add-forward-port=port=8883:proto=tcp:toport=8883:toaddr=VM_LAN_IP
+sudo firewall-cmd --reload
+```
+
+### If 8883 is already taken (e.g. another project) — use a different public port
+```bash
+# Example: external 8884 → VM_LAN_IP:8883
+sudo firewall-cmd --permanent --add-masquerade
+sudo firewall-cmd --permanent \
+  --add-forward-port=port=8884:proto=tcp:toport=8883:toaddr=VM_LAN_IP
+sudo firewall-cmd --reload
+```
+Then configure firmware/devices to connect on the alternate port (8884 in this example).
+
+### If router allows direct port-forward to the VM (cleanest)
+Forward TCP `8883` → `VM_LAN_IP:8883` in the router/firewall directly. No front-machine config needed.
+
+> **Current state (2026-07-01):**
+> - energymonai on `192.168.0.204` occupies port **8883**
+> - batmonai on VM4 (`192.168.0.207`) needs **8883 forwarded via router** OR mapped to a different external port (e.g. 8884) via firewalld DNAT on `192.168.0.204`
+
+---
+
+## 9. Every future deploy
 
 ```bash
 cd /home/harshit/<project>
@@ -150,3 +187,4 @@ Migrations and rebuilds happen automatically.
 - [ ] `make prod-seed` — initial data seeded
 - [ ] New domain block added to proxy Caddyfile on `192.168.0.204`
 - [ ] Proxy reloaded — cert obtained — site live on HTTPS
+- [ ] MQTT TCP forward configured (check port conflicts with existing projects)
