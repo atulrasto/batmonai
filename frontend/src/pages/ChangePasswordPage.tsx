@@ -2,6 +2,7 @@ import { useState, FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { changePassword } from '../api/auth'
 import { useAuth } from '../context/AuthContext'
+import PasswordInput from '../components/PasswordInput'
 
 export default function ChangePasswordPage() {
   const [current, setCurrent] = useState('')
@@ -21,7 +22,7 @@ export default function ChangePasswordPage() {
     try {
       const resp = await changePassword(current, next)
       setToken(resp.access_token)
-      nav('/', { replace: true })
+      nav('/dashboard', { replace: true })
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { detail?: string } } })
         ?.response?.data?.detail
@@ -41,16 +42,13 @@ export default function ChangePasswordPage() {
         </p>
         <form onSubmit={handleSubmit} className="auth-form">
           <label>Current password
-            <input type="password" value={current} required autoFocus
-              onChange={e => setCurrent(e.target.value)} />
+            <PasswordInput value={current} onChange={setCurrent} required autoFocus />
           </label>
           <label>New password
-            <input type="password" value={next} required minLength={8}
-              onChange={e => setNext(e.target.value)} />
+            <PasswordInput value={next} onChange={setNext} required minLength={8} />
           </label>
           <label>Confirm new password
-            <input type="password" value={confirm} required
-              onChange={e => setConfirm(e.target.value)} />
+            <PasswordInput value={confirm} onChange={setConfirm} required />
           </label>
           {error && <p className="form-error">{error}</p>}
           <button type="submit" className="btn-primary" disabled={busy}>

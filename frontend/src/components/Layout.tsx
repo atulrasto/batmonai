@@ -34,10 +34,13 @@ export default function Layout() {
           <Link to="/" className="topbar-logo">⚡ batmonai</Link>
         </div>
         <div className="topbar-right">
-          <span className="topbar-email">{user?.email}</span>
+          <Link to="/account" className="topbar-email topbar-account-link" title="My Account">
+            {user?.email}
+          </Link>
           <span className={`role-badge ${isSuperuser ? 'role-su' : 'role-client'}`}>
             {isSuperuser ? 'admin' : 'client'}
           </span>
+          <Link to="/account" className="btn-ghost btn-sm topbar-account-btn">My Account</Link>
           <Link to="/" className="topbar-home-link">← Public site</Link>
           <button className="btn-ghost btn-sm" onClick={handleLogout}>Sign out</button>
         </div>

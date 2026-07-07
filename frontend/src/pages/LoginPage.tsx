@@ -2,6 +2,7 @@ import { useState, FormEvent, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { login } from '../api/auth'
 import { useAuth } from '../context/AuthContext'
+import PasswordInput from '../components/PasswordInput'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -11,7 +12,6 @@ export default function LoginPage() {
   const { setToken, user, loading } = useAuth()
   const nav = useNavigate()
 
-  // Already authenticated — go straight to the app
   useEffect(() => {
     if (!loading && user && !user.must_change_password) nav('/dashboard', { replace: true })
     if (!loading && user?.must_change_password) nav('/change-password', { replace: true })
@@ -51,10 +51,7 @@ export default function LoginPage() {
             />
           </label>
           <label>Password
-            <input
-              type="password" value={password} required
-              onChange={e => setPassword(e.target.value)}
-            />
+            <PasswordInput value={password} onChange={setPassword} required />
           </label>
           {error && <p className="form-error">{error}</p>}
           <button type="submit" className="btn-primary" disabled={busy}>

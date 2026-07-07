@@ -26,6 +26,87 @@ body {
 
 #root { height: 100%; }
 
+/* ── Password input with show/hide toggle ─────────────────────────────────── */
+.pw-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.pw-input {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  padding: 0.5rem 2.5rem 0.5rem 0.75rem;
+  font-size: 14px;
+}
+.pw-input:focus { outline: none; border-color: var(--blue); }
+.pw-toggle {
+  position: absolute;
+  right: 0.5rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0.2rem;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+}
+.pw-toggle:hover { color: var(--text); }
+
+/* ── Account page ─────────────────────────────────────────────────────────── */
+.account-info-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem 1.5rem;
+  max-width: 480px;
+  margin-bottom: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.account-info-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.account-info-label {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  width: 60px;
+  flex-shrink: 0;
+}
+.account-info-value { font-size: 14px; color: var(--text); }
+
+.account-pw-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem 1.5rem;
+  max-width: 480px;
+}
+.account-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 1.25rem;
+}
+
+/* Topbar account link */
+.topbar-account-link {
+  text-decoration: none;
+  color: var(--muted);
+  transition: color 0.15s;
+}
+.topbar-account-link:hover { color: var(--text); }
+.topbar-account-btn { text-decoration: none; }
+
 /* ── Auth pages ───────────────────────────────────────────────────────────── */
 .auth-wrap {
   min-height: 100vh; display: flex; align-items: center; justify-content: center;
@@ -423,9 +504,10 @@ body {
 }
 
 @media (max-width: 768px) {
-  /* Hide email + home link in topbar to save space */
+  /* Hide email, account btn + home link in topbar to save space */
   .topbar-email { display: none; }
   .topbar-home-link { display: none; }
+  .topbar-account-btn { display: none; }
 
   /* Sidebar becomes a slide-in drawer below the topbar */
   .sidebar {
